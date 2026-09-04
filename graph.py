@@ -57,18 +57,16 @@ def evaluate_customer(state: GraphState) -> dict[str, Any]:
     }
 
 
-def route_action(state: GraphState) -> dict[str, str]:
+def route_action(state: GraphState) -> str:
     """Apply policy first, then confidence routing."""
 
     action = state["proposed_action"]
     confidence = float(state["confidence_score"])
     if action == HIGH_RISK_ACTION:
-        route = "execute_high_risk_action"
-    elif confidence >= CONFIDENCE_THRESHOLD:
-        route = "execute_low_risk_action"
-    else:
-        route = "execute_high_risk_action"
-    return {"route": route}
+        return "execute_high_risk_action"
+    if confidence >= CONFIDENCE_THRESHOLD:
+        return "execute_low_risk_action"
+    return "execute_high_risk_action"
 
 
 def _audit_fields(state: GraphState, *, decision: str, status: str, final_action: str | None = None) -> dict[str, Any]:
@@ -129,14 +127,12 @@ def build_graph(audit_store: AuditStore | None = None):
     store = audit_store or AuditStore()
     builder = StateGraph(GraphState)
     builder.add_node("evaluate_customer", evaluate_customer)
-    builder.add_node("route_action", route_action)
     builder.add_node("execute_low_risk_action", lambda state: execute_low_risk_action(state, audit_store=store))
     builder.add_node("execute_high_risk_action", lambda state: execute_high_risk_action(state, audit_store=store))
     builder.add_edge(START, "evaluate_customer")
-    builder.add_edge("evaluate_customer", "route_action")
     builder.add_conditional_edges(
-        "route_action",
-        lambda state: state["route"],
+        "evaluate_customer",
+        route_action,
         {
             "execute_low_risk_action": "execute_low_risk_action",
             "execute_high_risk_action": "execute_high_risk_action",

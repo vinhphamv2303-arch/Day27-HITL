@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, TypedDict
+from typing import Any, NotRequired, Required, TypedDict
 
 from pydantic import BaseModel, Field
 
@@ -10,19 +10,19 @@ from pydantic import BaseModel, Field
 class GraphState(TypedDict, total=False):
     """State persisted by LangGraph across an interrupt and resume."""
 
-    customer_id: str
-    total_operating_income: float
-    churn_probability: float
-    proposed_action: str
-    confidence_score: float
-    reasoning: str
-    human_decision: str | None
-    action_payload: dict[str, Any]
-    edited_action_payload: dict[str, Any] | None
-    reviewer_id: str | None
-    route: str | None
-    execution_status: str | None
-    execution_result: str | None
+    customer_id: Required[str]
+    proposed_action: Required[str]
+    confidence_score: Required[float]
+    reasoning: Required[str]
+    human_decision: Required[str | None]
+    total_operating_income: NotRequired[float]
+    churn_probability: NotRequired[float]
+    action_payload: NotRequired[dict[str, Any]]
+    edited_action_payload: NotRequired[dict[str, Any] | None]
+    reviewer_id: NotRequired[str | None]
+    route: NotRequired[str | None]
+    execution_status: NotRequired[str | None]
+    execution_result: NotRequired[str | None]
 
 
 class AuditEntry(BaseModel):

@@ -10,7 +10,7 @@ MSSV: **2A202601988**
 ```mermaid
 flowchart TD
     A[Customer data] --> B[evaluate_customer]
-    B --> C[route_action]
+    B --> C{route_action conditional edge}
     C -->|low risk + confidence ≥ 0.85| D[execute_low_risk_action]
     C -->|high risk or confidence < 0.85| I[INTERRUPT before execute_high_risk_action]
     I --> H[Human Review]

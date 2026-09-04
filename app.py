@@ -7,7 +7,7 @@ import uuid
 import streamlit as st
 
 from audit import AuditStore
-from graph import build_graph, initial_state
+from graph import CONFIDENCE_THRESHOLD, HIGH_RISK_ACTION, build_graph, initial_state
 from hitl import approve_action, edit_action, pending_state, reject_action
 
 
@@ -42,7 +42,8 @@ def main() -> None:
         values = snapshot.values
         if values.get("execution_status"):
             st.subheader("Workflow result")
-            route_label = "auto execute" if values.get("route") == "execute_low_risk_action" else "human review"
+            is_auto_route = values.get("proposed_action") != HIGH_RISK_ACTION and values.get("confidence_score", 0) >= CONFIDENCE_THRESHOLD
+            route_label = "auto execute" if is_auto_route else "human review"
             st.write(f"Route: **{route_label}**")
             st.write(f"Proposed action: `{values.get('proposed_action')}`")
             st.write(f"Confidence: `{values.get('confidence_score', 0):.2f}`")
@@ -59,9 +60,14 @@ def main() -> None:
             st.warning("Review required because the action is policy-sensitive or confidence is below 0.85.")
             reviewer_id = st.text_input("Reviewer ID", key="reviewer_id")
             edit_amount = None
-            if values.get("proposed_action") == "increase_credit_limit":
+            if values.get("proposed_action") == HIGH_RISK_ACTION:
                 original_amount = values.get("action_payload", {}).get("amount", 0)
                 edit_amount = st.number_input("Edited credit amount (VND)", min_value=0.0, value=float(original_amount), step=1_000_000.0)
+            else:
+                original_payload = values.get("action_payload", {})
+                edit_template = st.text_input("Email template", value=str(original_payload.get("template", "")))
+                edit_channel = st.selectbox("Email channel", ["email", "sms", "phone"], index=(["email", "sms", "phone"].index(original_payload.get("channel", "email")) if original_payload.get("channel", "email") in {"email", "sms", "phone"} else 0))
+                edit_subject = st.text_input("Email subject", value=str(original_payload.get("subject", "")))
             col1, col2, col3 = st.columns(3)
             if col1.button("Approve", disabled=not reviewer_id):
                 approve_action(graph, config, reviewer_id)
@@ -73,6 +79,8 @@ def main() -> None:
                 payload = dict(values.get("action_payload", {}))
                 if edit_amount is not None:
                     payload["amount"] = edit_amount
+                else:
+                    payload.update({"template": edit_template, "channel": edit_channel, "subject": edit_subject})
                 edit_action(graph, config, reviewer_id, payload)
                 st.rerun()
 
